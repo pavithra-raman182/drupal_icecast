@@ -1,0 +1,6 @@
+yp.cgi:
+  path: /yp/cgi
+  defaults:
+    _content: '\Drupal\yp\Controller\YpController::yp_cgi'
+  requirements:
+    _permission: 'access content'
