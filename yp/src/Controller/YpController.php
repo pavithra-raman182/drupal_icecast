@@ -3,6 +3,7 @@
 /**
  * @file
  * Contains \Drupal\yp\Controller\YpController
+ * @todo: add comments, inline documentation
  */
 namespace Drupal\yp\Controller;
 
@@ -49,7 +50,7 @@ class YpController {
 			$yp_cgi_response = $this->yg_cgi_touch($request, $response);
 			break;
 			case 'remove':
-			//$this->yg_cgi_remove($request, $response);
+			$yp_cgi_response = $this->yg_cgi_remove($request, $response);
 			break;
 			default:
 				;
@@ -128,13 +129,9 @@ class YpController {
 	}
 
 	private function yg_cgi_add(REQUEST $request, RESPONSE $response) {
-    
-		/*$this->sid = db_insert('yp_stream')
-			->fields($this->stream_data)
-			->execute();*/
-		//new node of type yp stream
+    	//new node of type yp stream
 		$items = array();
-		//@todo get the vocab from content type setting
+		//Start get the vocab from content type setting
 		$vocabularies = array('yp_stream_genre' => entity_load('taxonomy_vocabulary', 'yp_stream_genre'));
 		$this->stream_data['field_yp_stream_genre'] = explode(',', $this->stream_data['field_yp_stream_genre']);
 		foreach($this->stream_data['field_yp_stream_genre'] as $value) {
@@ -155,29 +152,52 @@ class YpController {
 			$items[] = $item;
 		}
 		$this->stream_data['field_yp_stream_genre'] = $items;
+		$this->stream_data['field_audio_url']['url'] = $this->stream_data['field_yp_stream_listen_url'];
+		$this->stream_data['field_audio_url']['title'] = "Tune In";
+		$this->stream_data['field_audio_url']['options'] = array();
+		$this->stream_data['field_audio_player']['value'] = "<audio controls>
+			<source src='" . $this->stream_data['field_yp_stream_listen_url'] . "'>
+			No Support
+			</audio>" ;
+		$this->stream_data['field_audio_player']['format'] = 'full_html';
 		
-		$new_stream = entity_create('node', $this->stream_data);
-		$new_stream->save();	
+		//check if it is already there
+		$nids = \Drupal::entityQuery('node')
+		->condition('type', 'yp_stream')
+		->condition('field_yp_stream_listen_url', $this->stream_data['field_yp_stream_listen_url'])
+		->execute();
+		//if yes, then update
+		if (!empty($nids)) {
+			foreach ($nids as $nid) {
+				$stream = entity_load('node', $nid);
+				foreach ($this->stream_data as $key => $value) {
+					if ($key != 'sid') {
+						$stream->{$key} = $value;
+					}
+				}
+				$stream->save();
+			}
 			
-	    $yp_cgi_response['YPResponse'] = $new_stream->id() ? 1 : 0;
+		}
+		//else then create a new node
+		else {
+			$stream = entity_create('node', $this->stream_data);
+			$stream->save();	
+		}	
+	    $yp_cgi_response['YPResponse'] = $stream->id() ? 1 : 0;
 	    $yp_cgi_response['YPMessage'] = $yp_cgi_response['YPResponse'] ? 'Added' : 'Error';
 
-		$yp_cgi_response['SID'] = $new_stream->id();
+		$yp_cgi_response['SID'] = $stream->id();
 		$yp_cgi_response['TouchFreq'] = 60 ;
 		return $yp_cgi_response;
 	}
 	
 	private function yg_cgi_touch(REQUEST $request, RESPONSE $response) {
 	
-		 /*$this->yp_response = (\Drupal::database()->merge('yp_stream')
-		     ->key(array('sid' => $this->stream_data['sid']))
-		     ->fields($this->stream_data)
-		     ->execute()) ? 1 : 0;*/
-		
 		$stream = entity_load('node', $this->stream_data['sid']);
 		foreach ($this->stream_data as $key => $value) {
 			if ($key != 'sid') {
-				$stream->{$key}->value = $value;
+				$stream->{$key} = $value;
 			}
 		}
 		$stream->save();
